@@ -1,363 +1,339 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, session
+from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from models import db, User, QuizRecord, Question
 from forms import LoginForm, RegisterForm, QuizSettingsForm, AnswerForm
-from config import Config
-import random
+from config import config
+from utils import generate_question, calculate_statistics, format_time, validate_quiz_settings
 import time
-from datetime import datetime, timedelta
-from collections import defaultdict
+import logging
+from datetime import datetime
 
-app = Flask(__name__)
-app.config.from_object(Config)
-
-# 初始化扩展
-db.init_app(app)
-login_manager = LoginManager()
-login_manager.init_app(app)
-login_manager.login_view = 'login'
-login_manager.login_message = '请先登录以访问此页面。'
-
-@login_manager.user_loader
-def load_user(user_id):
-    return User.query.get(int(user_id))
-
-# 生成数学题目的函数
-def generate_question(difficulty, operation_type):
-    """根据难度和运算类型生成题目"""
-    if difficulty == 'easy':
-        min_num, max_num = 1, 20
-    elif difficulty == 'medium':
-        min_num, max_num = 1, 100
-    else:  # hard
-        min_num, max_num = 1, 1000
+def create_app(config_name='default'):
+    app = Flask(__name__)
+    app.config.from_object(config[config_name])
     
-    if operation_type == 'mixed':
-        operation_type = random.choice(['add', 'subtract', 'multiply', 'divide'])
+    # 初始化扩展
+    db.init_app(app)
     
-    if operation_type == 'add':
-        a = random.randint(min_num, max_num)
-        b = random.randint(min_num, max_num)
-        question = f"{a} + {b} = ?"
-        answer = a + b
-    elif operation_type == 'subtract':
-        a = random.randint(min_num, max_num)
-        b = random.randint(min_num, a)  # 确保结果为正数
-        question = f"{a} - {b} = ?"
-        answer = a - b
-    elif operation_type == 'multiply':
-        # 乘法使用较小的数字
-        if difficulty == 'easy':
-            a = random.randint(1, 10)
-            b = random.randint(1, 10)
-        elif difficulty == 'medium':
-            a = random.randint(1, 20)
-            b = random.randint(1, 20)
-        else:
-            a = random.randint(1, 50)
-            b = random.randint(1, 50)
-        question = f"{a} × {b} = ?"
-        answer = a * b
-    else:  # divide
-        # 除法确保整除
-        if difficulty == 'easy':
-            b = random.randint(1, 10)
-            answer = random.randint(1, 10)
-        elif difficulty == 'medium':
-            b = random.randint(1, 20)
-            answer = random.randint(1, 20)
-        else:
-            b = random.randint(1, 50)
-            answer = random.randint(1, 50)
-        a = b * answer
-        question = f"{a} ÷ {b} = ?"
+    login_manager = LoginManager()
+    login_manager.init_app(app)
+    login_manager.login_view = 'login'
+    login_manager.login_message = '请先登录以访问此页面。'
     
-    return question, answer
+    @login_manager.user_loader
+    def load_user(user_id):
+        return User.query.get(int(user_id))
+    
+    # 配置日志
+    logging.basicConfig(level=logging.INFO)
+    logger = logging.getLogger(__name__)
+    
+    # 错误处理装饰器
+    def handle_errors(f):
+        """错误处理装饰器"""
+        def wrapper(*args, **kwargs):
+            try:
+                return f(*args, **kwargs)
+            except Exception as e:
+                logger.error(f"Error in {f.__name__}: {str(e)}")
+                flash('发生了一个错误，请稍后重试。', 'error')
+                return redirect(url_for('index'))
+        wrapper.__name__ = f.__name__
+        return wrapper
+    
+    # 路由定义
+    @app.route('/')
+    def index():
+        return render_template('index.html')
 
-@app.route('/')
-def index():
-    return render_template('index.html')
-
-@app.route('/register', methods=['GET', 'POST'])
-def register():
-    form = RegisterForm()
-    if form.validate_on_submit():
-        # 检查用户名是否已存在
-        if User.query.filter_by(username=form.username.data).first():
-            flash('用户名已存在，请选择其他用户名。', 'error')
-            return render_template('register.html', form=form)
+    @app.route('/register', methods=['GET', 'POST'])
+    def register():
+        form = RegisterForm()
+        if form.validate_on_submit():
+            # 检查用户名是否已存在
+            if User.query.filter_by(username=form.username.data).first():
+                flash('用户名已存在，请选择其他用户名。', 'error')
+                return render_template('register.html', form=form)
+            
+            # 检查邮箱是否已存在
+            if User.query.filter_by(email=form.email.data).first():
+                flash('邮箱已被注册，请使用其他邮箱。', 'error')
+                return render_template('register.html', form=form)
+            
+            # 创建新用户
+            user = User(username=form.username.data, email=form.email.data)
+            user.set_password(form.password.data)
+            db.session.add(user)
+            db.session.commit()
+            
+            flash('注册成功！请登录。', 'success')
+            return redirect(url_for('login'))
         
-        # 检查邮箱是否已存在
-        if User.query.filter_by(email=form.email.data).first():
-            flash('邮箱已被注册，请使用其他邮箱。', 'error')
-            return render_template('register.html', form=form)
+        return render_template('register.html', form=form)
+
+    @app.route('/login', methods=['GET', 'POST'])
+    def login():
+        form = LoginForm()
+        if form.validate_on_submit():
+            user = User.query.filter_by(username=form.username.data).first()
+            if user and user.check_password(form.password.data):
+                login_user(user)
+                flash(f'欢迎回来，{user.username}！', 'success')
+                next_page = request.args.get('next')
+                return redirect(next_page) if next_page else redirect(url_for('index'))
+            else:
+                flash('用户名或密码错误。', 'error')
         
-        # 创建新用户
-        user = User(username=form.username.data, email=form.email.data)
-        user.set_password(form.password.data)
-        db.session.add(user)
+        return render_template('login.html', form=form)
+
+    @app.route('/logout')
+    @login_required
+    def logout():
+        logout_user()
+        flash('您已成功退出登录。', 'info')
+        return redirect(url_for('index'))
+
+    @app.route('/quiz_settings', methods=['GET', 'POST'])
+    @login_required
+    def quiz_settings():
+        form = QuizSettingsForm()
+        if form.validate_on_submit():
+            # 验证设置
+            if not validate_quiz_settings(form.operation.data, form.difficulty.data, form.question_count.data):
+                flash('练习设置无效，请检查输入。', 'error')
+                return render_template('quiz_settings.html', form=form)
+            
+            # 保存设置到session
+            session['quiz_settings'] = {
+                'operation': form.operation.data,
+                'difficulty': form.difficulty.data,
+                'question_count': form.question_count.data
+            }
+            return redirect(url_for('quiz'))
+        
+        return render_template('quiz_settings.html', form=form)
+
+    @app.route('/quiz')
+    @login_required
+    def quiz():
+        # 检查是否有练习设置
+        if 'quiz_settings' not in session:
+            flash('请先设置练习参数。', 'warning')
+            return redirect(url_for('quiz_settings'))
+        
+        settings = session['quiz_settings']
+        
+        # 初始化练习会话
+        if 'current_quiz' not in session:
+            session['current_quiz'] = {
+                'questions': [],
+                'answers': [],
+                'start_time': time.time(),
+                'current_question': 0
+            }
+            
+            # 生成题目
+            for _ in range(settings['question_count']):
+                question = generate_question(settings['operation'], settings['difficulty'])
+                session['current_quiz']['questions'].append(question)
+        
+        current_quiz = session['current_quiz']
+        current_q_index = current_quiz['current_question']
+        
+        # 检查是否完成所有题目
+        if current_q_index >= len(current_quiz['questions']):
+            return redirect(url_for('quiz_result'))
+        
+        current_question = current_quiz['questions'][current_q_index]
+        form = AnswerForm()
+        
+        return render_template('quiz.html', 
+                             question=current_question,
+                             question_number=current_q_index + 1,
+                             total_questions=len(current_quiz['questions']),
+                             form=form)
+
+    @app.route('/submit_answer', methods=['POST'])
+    @login_required
+    def submit_answer():
+        if 'current_quiz' not in session:
+            flash('练习会话已过期，请重新开始。', 'error')
+            return redirect(url_for('quiz_settings'))
+        
+        form = AnswerForm()
+        if form.validate_on_submit():
+            current_quiz = session['current_quiz']
+            current_q_index = current_quiz['current_question']
+            
+            if current_q_index < len(current_quiz['questions']):
+                # 记录答案
+                current_quiz['answers'].append({
+                    'answer': form.answer.data,
+                    'time': time.time()
+                })
+                
+                # 移动到下一题
+                current_quiz['current_question'] += 1
+                session['current_quiz'] = current_quiz
+        
+        return redirect(url_for('quiz'))
+
+    @app.route('/quiz_result')
+    @login_required
+    def quiz_result():
+        if 'current_quiz' not in session:
+            flash('没有找到练习记录。', 'error')
+            return redirect(url_for('quiz_settings'))
+        
+        current_quiz = session['current_quiz']
+        questions = current_quiz['questions']
+        answers = current_quiz['answers']
+        
+        # 计算结果
+        correct_count = 0
+        total_time = time.time() - current_quiz['start_time']
+        
+        results = []
+        for i, (question, answer_data) in enumerate(zip(questions, answers)):
+            user_answer = answer_data['answer']
+            correct_answer = question['answer']
+            is_correct = user_answer == correct_answer
+            
+            if is_correct:
+                correct_count += 1
+            
+            results.append({
+                'question': question,
+                'user_answer': user_answer,
+                'correct_answer': correct_answer,
+                'is_correct': is_correct
+            })
+        
+        # 保存记录到数据库
+        quiz_record = QuizRecord(
+            user_id=current_user.id,
+            operation=session['quiz_settings']['operation'],
+            difficulty=session['quiz_settings']['difficulty'],
+            total_questions=len(questions),
+            correct_answers=correct_count,
+            total_time=int(total_time),
+            score=round((correct_count / len(questions)) * 100, 2)
+        )
+        db.session.add(quiz_record)
         db.session.commit()
         
-        flash('注册成功！请登录。', 'success')
-        return redirect(url_for('login'))
-    
-    return render_template('register.html', form=form)
-
-@app.route('/login', methods=['GET', 'POST'])
-def login():
-    form = LoginForm()
-    if form.validate_on_submit():
-        user = User.query.filter_by(username=form.username.data).first()
-        if user and user.check_password(form.password.data):
-            login_user(user)
-            flash(f'欢迎回来，{user.username}！', 'success')
-            next_page = request.args.get('next')
-            return redirect(next_page) if next_page else redirect(url_for('index'))
-        else:
-            flash('用户名或密码错误。', 'error')
-    
-    return render_template('login.html', form=form)
-
-@app.route('/logout')
-@login_required
-def logout():
-    logout_user()
-    flash('您已成功退出登录。', 'info')
-    return redirect(url_for('index'))
-
-@app.route('/quiz_settings', methods=['GET', 'POST'])
-@login_required
-def quiz_settings():
-    form = QuizSettingsForm()
-    if form.validate_on_submit():
-        # 将设置保存到session中
-        session['quiz_settings'] = {
-            'difficulty': form.difficulty.data,
-            'operation_type': form.operation_type.data,
-            'question_count': int(form.question_count.data)
-        }
-        session['current_question'] = 0
-        session['correct_count'] = 0
-        session['questions'] = []
-        session['start_time'] = time.time()
+        # 清除会话数据
+        session.pop('current_quiz', None)
+        session.pop('quiz_settings', None)
         
-        return redirect(url_for('quiz'))
-    
-    return render_template('quiz_settings.html', form=form)
+        return render_template('quiz_result.html',
+                             results=results,
+                             correct_count=correct_count,
+                             total_questions=len(questions),
+                             total_time=format_time(total_time),
+                             score=quiz_record.score)
 
-@app.route('/quiz', methods=['GET', 'POST'])
-@login_required
-def quiz():
-    if 'quiz_settings' not in session:
-        flash('请先设置练习参数。', 'warning')
-        return redirect(url_for('quiz_settings'))
-    
-    settings = session['quiz_settings']
-    current_question = session.get('current_question', 0)
-    total_questions = settings['question_count']
-    
-    # 检查是否完成所有题目
-    if current_question >= total_questions:
-        return redirect(url_for('quiz_result'))
-    
-    form = AnswerForm()
-    
-    # 生成当前题目
-    if current_question >= len(session.get('questions', [])):
-        question_text, correct_answer = generate_question(
-            settings['difficulty'], 
-            settings['operation_type']
-        )
-        session['questions'].append({
-            'text': question_text,
-            'answer': correct_answer,
-            'start_time': time.time()
-        })
-        session.modified = True
-    
-    current_q = session['questions'][current_question]
-    
-    if form.validate_on_submit():
-        # 记录答题时间
-        question_time = int(time.time() - current_q['start_time'])
-        user_answer = form.answer.data
-        is_correct = user_answer == current_q['answer']
-        
-        # 更新题目信息
-        session['questions'][current_question].update({
-            'user_answer': user_answer,
-            'is_correct': is_correct,
-            'time_spent': question_time
-        })
-        
-        if is_correct:
-            session['correct_count'] = session.get('correct_count', 0) + 1
-        
-        session['current_question'] = current_question + 1
-        session.modified = True
-        
-        return redirect(url_for('quiz'))
-    
-    # 计算总用时
-    total_time = int(time.time() - session['start_time'])
-    
-    return render_template('quiz.html', 
-                         form=form,
-                         question_text=current_q['text'],
-                         current_question=current_question,
-                         total_questions=total_questions,
-                         correct_count=session.get('correct_count', 0),
-                         total_time=total_time)
-
-@app.route('/quiz_result')
-@login_required
-def quiz_result():
-    if 'quiz_settings' not in session or 'questions' not in session:
-        flash('没有找到练习记录。', 'warning')
-        return redirect(url_for('quiz_settings'))
-    
-    settings = session['quiz_settings']
-    questions = session['questions']
-    total_time = int(time.time() - session['start_time'])
-    correct_count = session.get('correct_count', 0)
-    
-    # 计算分数（每题10分）
-    score = correct_count * 10
-    
-    # 保存练习记录到数据库
-    quiz_record = QuizRecord(
-        user_id=current_user.id,
-        difficulty=settings['difficulty'],
-        operation_type=settings['operation_type'],
-        total_questions=len(questions),
-        correct_answers=correct_count,
-        score=score,
-        time_spent=total_time
-    )
-    db.session.add(quiz_record)
-    db.session.flush()  # 获取ID
-    
-    # 保存每道题的详细信息
-    for q in questions:
-        question = Question(
-            quiz_record_id=quiz_record.id,
-            question_text=q['text'],
-            correct_answer=q['answer'],
-            user_answer=q.get('user_answer'),
-            is_correct=q.get('is_correct', False),
-            time_spent=q.get('time_spent', 0)
-        )
-        db.session.add(question)
-    
-    db.session.commit()
-    
-    # 清除session中的练习数据
-    for key in ['quiz_settings', 'current_question', 'correct_count', 'questions', 'start_time']:
-        session.pop(key, None)
-    
-    return render_template('quiz_result.html', quiz_record=quiz_record)
-
-@app.route('/history')
-@login_required
-def history():
-    page = request.args.get('page', 1, type=int)
-    per_page = 10
-    
-    pagination = QuizRecord.query.filter_by(user_id=current_user.id)\
+    @app.route('/history')
+    @login_required
+    def history():
+        page = request.args.get('page', 1, type=int)
+        records = QuizRecord.query.filter_by(user_id=current_user.id)\
                                  .order_by(QuizRecord.created_at.desc())\
-                                 .paginate(page=page, per_page=per_page, error_out=False)
-    
-    quiz_records = pagination.items
-    
-    return render_template('history.html', 
-                         quiz_records=quiz_records, 
-                         pagination=pagination)
+                                 .paginate(page=page, per_page=10, error_out=False)
+        return render_template('history.html', records=records)
 
-@app.route('/quiz_detail/<int:record_id>')
-@login_required
-def quiz_detail(record_id):
-    quiz_record = QuizRecord.query.filter_by(id=record_id, user_id=current_user.id).first_or_404()
-    return render_template('quiz_result.html', quiz_record=quiz_record)
-
-@app.route('/statistics')
-@login_required
-def statistics():
-    # 获取用户的所有练习记录
-    records = QuizRecord.query.filter_by(user_id=current_user.id).all()
-    
-    if not records:
-        stats = {
-            'total_score': 0,
-            'total_quizzes': 0,
-            'overall_accuracy': 0,
-            'total_time': 0,
-            'by_difficulty': {},
-            'by_operation': {},
-            'recent_records': {}
-        }
+    @app.route('/statistics')
+    @login_required
+    def statistics():
+        records = QuizRecord.query.filter_by(user_id=current_user.id).all()
+        stats = calculate_statistics(records)
         return render_template('statistics.html', stats=stats)
+
+    @app.route('/leaderboard')
+    @login_required
+    def leaderboard():
+        # 获取排行榜数据
+        top_users = db.session.query(
+            User.username,
+            db.func.avg(QuizRecord.score).label('avg_score'),
+            db.func.count(QuizRecord.id).label('total_quizzes')
+        ).join(QuizRecord).group_by(User.id)\
+         .order_by(db.func.avg(QuizRecord.score).desc())\
+         .limit(10).all()
+        
+        return render_template('leaderboard.html', top_users=top_users)
+
+    # API路由
+    @app.route('/api/leaderboard')
+    @login_required
+    def api_leaderboard():
+        top_users = db.session.query(
+            User.username,
+            db.func.avg(QuizRecord.score).label('avg_score'),
+            db.func.count(QuizRecord.id).label('total_quizzes')
+        ).join(QuizRecord).group_by(User.id)\
+         .order_by(db.func.avg(QuizRecord.score).desc())\
+         .limit(10).all()
+        
+        return jsonify([{
+            'username': user.username,
+            'avg_score': round(user.avg_score, 2),
+            'total_quizzes': user.total_quizzes
+        } for user in top_users])
+
+    @app.route('/export_data')
+    @login_required
+    def export_data():
+        records = QuizRecord.query.filter_by(user_id=current_user.id).all()
+        
+        # 生成CSV数据
+        import io
+        import csv
+        output = io.StringIO()
+        writer = csv.writer(output)
+        
+        # 写入标题行
+        writer.writerow(['日期', '运算类型', '难度', '总题数', '正确数', '用时(秒)', '得分'])
+        
+        # 写入数据行
+        for record in records:
+            writer.writerow([
+                record.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+                record.operation,
+                record.difficulty,
+                record.total_questions,
+                record.correct_answers,
+                record.total_time,
+                record.score
+            ])
+        
+        output.seek(0)
+        
+        from flask import Response
+        return Response(
+            output.getvalue(),
+            mimetype='text/csv',
+            headers={'Content-Disposition': 'attachment; filename=quiz_history.csv'}
+        )
+
+    # 错误处理
+    @app.errorhandler(404)
+    def not_found_error(error):
+        return render_template('errors/404.html'), 404
+
+    @app.errorhandler(500)
+    def internal_error(error):
+        db.session.rollback()
+        return render_template('errors/500.html'), 500
     
-    # 基本统计
-    total_score = sum(r.score for r in records)
-    total_quizzes = len(records)
-    total_questions = sum(r.total_questions for r in records)
-    total_correct = sum(r.correct_answers for r in records)
-    overall_accuracy = round((total_correct / total_questions) * 100, 2) if total_questions > 0 else 0
-    total_time = sum(r.time_spent for r in records)
-    
-    # 按难度统计
-    by_difficulty = defaultdict(lambda: {'count': 0, 'correct': 0, 'total': 0, 'score': 0})
-    for record in records:
-        by_difficulty[record.difficulty]['count'] += 1
-        by_difficulty[record.difficulty]['correct'] += record.correct_answers
-        by_difficulty[record.difficulty]['total'] += record.total_questions
-        by_difficulty[record.difficulty]['score'] += record.score
-    
-    for difficulty in by_difficulty:
-        data = by_difficulty[difficulty]
-        data['accuracy'] = round((data['correct'] / data['total']) * 100, 2) if data['total'] > 0 else 0
-        data['avg_score'] = round(data['score'] / data['count'], 1) if data['count'] > 0 else 0
-    
-    # 按运算类型统计
-    by_operation = defaultdict(lambda: {'count': 0, 'correct': 0, 'total': 0, 'score': 0})
-    for record in records:
-        by_operation[record.operation_type]['count'] += 1
-        by_operation[record.operation_type]['correct'] += record.correct_answers
-        by_operation[record.operation_type]['total'] += record.total_questions
-        by_operation[record.operation_type]['score'] += record.score
-    
-    for operation in by_operation:
-        data = by_operation[operation]
-        data['accuracy'] = round((data['correct'] / data['total']) * 100, 2) if data['total'] > 0 else 0
-        data['avg_score'] = round(data['score'] / data['count'], 1) if data['count'] > 0 else 0
-    
-    # 最近7天的练习记录
-    recent_records = {}
-    for i in range(7):
-        date = (datetime.now() - timedelta(days=i)).strftime('%Y-%m-%d')
-        day_records = [r for r in records if r.created_at.strftime('%Y-%m-%d') == date]
-        if day_records:
-            total_correct_day = sum(r.correct_answers for r in day_records)
-            total_questions_day = sum(r.total_questions for r in day_records)
-            recent_records[date] = {
-                'count': len(day_records),
-                'accuracy': round((total_correct_day / total_questions_day) * 100, 2) if total_questions_day > 0 else 0,
-                'total_score': sum(r.score for r in day_records)
-            }
-    
-    stats = {
-        'total_score': total_score,
-        'total_quizzes': total_quizzes,
-        'overall_accuracy': overall_accuracy,
-        'total_time': total_time,
-        'by_difficulty': dict(by_difficulty),
-        'by_operation': dict(by_operation),
-        'recent_records': recent_records
-    }
-    
-    return render_template('statistics.html', stats=stats)
+    return app
+
+# 创建应用实例
+import os
+config_name = os.environ.get('FLASK_ENV', 'default')
+app = create_app(config_name)
 
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
-    app.run(host='0.0.0.0', port=12000, debug=True)
+    app.run(debug=True)

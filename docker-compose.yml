@@ -1,0 +1,63 @@
+version: '3.8'
+
+services:
+  web:
+    build: .
+    ports:
+      - "5000:5000"
+    environment:
+      - FLASK_ENV=production
+      - DATABASE_URL=mysql://mathquiz:password@db:3306/mathquiz
+      - SECRET_KEY=your-secret-key-here
+    depends_on:
+      - db
+    volumes:
+      - ./logs:/app/logs
+    restart: unless-stopped
+    networks:
+      - mathquiz-network
+
+  db:
+    image: mysql:8.0
+    environment:
+      - MYSQL_DATABASE=mathquiz
+      - MYSQL_USER=mathquiz
+      - MYSQL_PASSWORD=password
+      - MYSQL_ROOT_PASSWORD=rootpassword
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "3306:3306"
+    restart: unless-stopped
+    networks:
+      - mathquiz-network
+
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf
+      - ./static:/var/www/static
+    depends_on:
+      - web
+    restart: unless-stopped
+    networks:
+      - mathquiz-network
+
+  redis:
+    image: redis:alpine
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+    networks:
+      - mathquiz-network
+
+volumes:
+  mysql_data:
+
+networks:
+  mathquiz-network:
+    driver: bridge

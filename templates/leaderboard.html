@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+
+{% block title %}排行榜 - 口算练习网站{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h4 class="mb-0">
+                    <i class="fas fa-trophy text-warning"></i>
+                    排行榜
+                </h4>
+            </div>
+            <div class="card-body">
+                <div id="leaderboard-content">
+                    <div class="text-center">
+                        <div class="spinner-border" role="status">
+                            <span class="visually-hidden">加载中...</span>
+                        </div>
+                        <p class="mt-2">正在加载排行榜数据...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-info-circle"></i>
+                    排行榜说明
+                </h5>
+            </div>
+            <div class="card-body">
+                <ul class="list-unstyled">
+                    <li><i class="fas fa-star text-warning"></i> 排名基于总得分计算</li>
+                    <li><i class="fas fa-calculator text-primary"></i> 平均分 = 总得分 ÷ 练习次数</li>
+                    <li><i class="fas fa-sync-alt text-info"></i> 排行榜每小时更新一次</li>
+                    <li><i class="fas fa-users text-success"></i> 只显示前10名用户</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    loadLeaderboard();
+});
+
+function loadLeaderboard() {
+    fetch('/api/leaderboard')
+        .then(response => response.json())
+        .then(data => {
+            displayLeaderboard(data);
+        })
+        .catch(error => {
+            console.error('Error loading leaderboard:', error);
+            document.getElementById('leaderboard-content').innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    加载排行榜失败，请稍后重试。
+                </div>
+            `;
+        });
+}
+
+function displayLeaderboard(data) {
+    if (data.length === 0) {
+        document.getElementById('leaderboard-content').innerHTML = `
+            <div class="text-center text-muted">
+                <i class="fas fa-users fa-3x mb-3"></i>
+                <p>暂无排行榜数据</p>
+            </div>
+        `;
+        return;
+    }
+
+    let html = '<div class="table-responsive"><table class="table table-hover">';
+    html += `
+        <thead class="table-dark">
+            <tr>
+                <th>排名</th>
+                <th>用户名</th>
+                <th>总得分</th>
+                <th>练习次数</th>
+                <th>平均分</th>
+            </tr>
+        </thead>
+        <tbody>
+    `;
+
+    data.forEach(user => {
+        let rankIcon = '';
+        let rowClass = '';
+        
+        if (user.rank === 1) {
+            rankIcon = '<i class="fas fa-crown text-warning"></i>';
+            rowClass = 'table-warning';
+        } else if (user.rank === 2) {
+            rankIcon = '<i class="fas fa-medal text-secondary"></i>';
+            rowClass = 'table-light';
+        } else if (user.rank === 3) {
+            rankIcon = '<i class="fas fa-award text-warning"></i>';
+            rowClass = 'table-light';
+        }
+
+        html += `
+            <tr class="${rowClass}">
+                <td>
+                    <span class="badge bg-primary me-2">${user.rank}</span>
+                    ${rankIcon}
+                </td>
+                <td><strong>${user.username}</strong></td>
+                <td><span class="badge bg-success">${user.total_score}</span></td>
+                <td>${user.quiz_count}</td>
+                <td>${user.avg_score}</td>
+            </tr>
+        `;
+    });
+
+    html += '</tbody></table></div>';
+    document.getElementById('leaderboard-content').innerHTML = html;
+}
+</script>
+{% endblock %}

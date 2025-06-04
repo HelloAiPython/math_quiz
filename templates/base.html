@@ -21,6 +21,10 @@
     <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
     <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='icon-192.png') }}">
     <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='icon-32.png') }}">
+    
+    <!-- 预加载关键资源 -->
+    <link rel="preload" href="{{ url_for('static', filename='js/main.js') }}" as="script">
+    <link rel="preload" href="{{ url_for('static', filename='css/style.css') }}" as="style">
 </head>
 <body>
     <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
@@ -44,6 +48,9 @@
                     <li class="nav-item">
                         <a class="nav-link" href="{{ url_for('statistics') }}">统计信息</a>
                     </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('leaderboard') }}">排行榜</a>
+                    </li>
                     {% endif %}
                 </ul>
                 <ul class="navbar-nav">
@@ -53,7 +60,13 @@
                             {{ current_user.username }}
                         </a>
                         <ul class="dropdown-menu">
-                            <li><a class="dropdown-item" href="{{ url_for('logout') }}">退出登录</a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('export_data') }}">
+                                <i class="fas fa-download"></i> 导出数据
+                            </a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="{{ url_for('logout') }}">
+                                <i class="fas fa-sign-out-alt"></i> 退出登录
+                            </a></li>
                         </ul>
                     </li>
                     {% else %}
