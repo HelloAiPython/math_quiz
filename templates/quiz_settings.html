@@ -4,73 +4,162 @@
 
 {% block content %}
 <div class="row justify-content-center">
-    <div class="col-md-8">
+    <div class="col-12 col-md-8 col-lg-6">
         <div class="card">
-            <div class="card-header">
-                <h4 class="mb-0">练习设置</h4>
+            <div class="card-header text-center">
+                <h4 class="mb-0">
+                    <i class="fas fa-cog text-primary me-2"></i>
+                    练习设置
+                </h4>
             </div>
             <div class="card-body">
-                <form method="POST">
+                <form method="POST" id="settings-form">
                     {{ form.hidden_tag() }}
                     
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                {{ form.difficulty.label(class="form-label") }}
-                                {{ form.difficulty(class="form-select") }}
-                                <div class="form-text">
-                                    <small>
-                                        <strong>简单:</strong> 1-20的数字<br>
-                                        <strong>中等:</strong> 1-100的数字<br>
-                                        <strong>困难:</strong> 1-1000的数字
-                                    </small>
+                    <!-- 难度选择 -->
+                    <div class="mb-4">
+                        {{ form.difficulty.label(class="form-label fw-bold") }}
+                        {{ form.difficulty(class="form-select form-select-lg") }}
+                        <div class="form-text">
+                            <div class="row text-center mt-2">
+                                <div class="col-4">
+                                    <div class="badge bg-success">简单</div>
+                                    <small class="d-block">1-20</small>
                                 </div>
-                            </div>
-                        </div>
-                        
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                {{ form.operation_type.label(class="form-label") }}
-                                {{ form.operation_type(class="form-select") }}
-                                <div class="form-text">
-                                    <small>选择您想要练习的运算类型</small>
+                                <div class="col-4">
+                                    <div class="badge bg-warning">中等</div>
+                                    <small class="d-block">1-100</small>
+                                </div>
+                                <div class="col-4">
+                                    <div class="badge bg-danger">困难</div>
+                                    <small class="d-block">1-1000</small>
                                 </div>
                             </div>
                         </div>
                     </div>
                     
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                {{ form.question_count.label(class="form-label") }}
-                                {{ form.question_count(class="form-select") }}
-                                <div class="form-text">
-                                    <small>选择本次练习的题目数量</small>
+                    <!-- 运算类型选择 -->
+                    <div class="mb-4">
+                        {{ form.operation_type.label(class="form-label fw-bold") }}
+                        {{ form.operation_type(class="form-select form-select-lg") }}
+                        <div class="form-text">
+                            <div class="row text-center mt-2">
+                                <div class="col-3">
+                                    <i class="fas fa-plus text-success fs-4"></i>
+                                    <small class="d-block">加法</small>
+                                </div>
+                                <div class="col-3">
+                                    <i class="fas fa-minus text-info fs-4"></i>
+                                    <small class="d-block">减法</small>
+                                </div>
+                                <div class="col-3">
+                                    <i class="fas fa-times text-warning fs-4"></i>
+                                    <small class="d-block">乘法</small>
+                                </div>
+                                <div class="col-3">
+                                    <i class="fas fa-divide text-danger fs-4"></i>
+                                    <small class="d-block">除法</small>
                                 </div>
                             </div>
                         </div>
                     </div>
                     
+                    <!-- 题目数量选择 -->
+                    <div class="mb-4">
+                        {{ form.question_count.label(class="form-label fw-bold") }}
+                        {{ form.question_count(class="form-select form-select-lg") }}
+                        <div class="form-text">
+                            <small class="text-muted">
+                                <i class="fas fa-clock me-1"></i>
+                                建议练习时间：5题约2分钟，10题约5分钟
+                            </small>
+                        </div>
+                    </div>
+                    
+                    <!-- 开始按钮 -->
                     <div class="d-grid">
-                        {{ form.submit(class="btn btn-primary btn-lg") }}
+                        {{ form.submit(class="btn btn-primary btn-lg", style="height: 60px; font-size: 1.2rem;") }}
                     </div>
                 </form>
             </div>
         </div>
         
+        <!-- 练习说明卡片 -->
         <div class="card mt-4">
             <div class="card-header">
-                <h5 class="mb-0">练习说明</h5>
+                <h6 class="mb-0">
+                    <i class="fas fa-info-circle text-info me-2"></i>
+                    练习说明
+                </h6>
             </div>
             <div class="card-body">
-                <ul class="list-unstyled">
-                    <li><i class="text-primary">•</i> 每道题都有时间记录，挑战您的计算速度</li>
-                    <li><i class="text-primary">•</i> 答对题目可以获得分数，答错不扣分</li>
-                    <li><i class="text-primary">•</i> 练习结束后会显示详细的统计信息</li>
-                    <li><i class="text-primary">•</i> 所有练习记录都会保存到您的历史中</li>
-                </ul>
+                <div class="row">
+                    <div class="col-12 col-md-6 mb-3">
+                        <div class="d-flex align-items-center">
+                            <i class="fas fa-stopwatch text-primary me-3 fs-5"></i>
+                            <div>
+                                <strong>计时挑战</strong>
+                                <small class="d-block text-muted">记录每题答题时间</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-12 col-md-6 mb-3">
+                        <div class="d-flex align-items-center">
+                            <i class="fas fa-trophy text-warning me-3 fs-5"></i>
+                            <div>
+                                <strong>积分系统</strong>
+                                <small class="d-block text-muted">答对得分，答错不扣分</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-12 col-md-6 mb-3">
+                        <div class="d-flex align-items-center">
+                            <i class="fas fa-chart-line text-success me-3 fs-5"></i>
+                            <div>
+                                <strong>详细统计</strong>
+                                <small class="d-block text-muted">练习结果和进步分析</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-12 col-md-6 mb-3">
+                        <div class="d-flex align-items-center">
+                            <i class="fas fa-history text-info me-3 fs-5"></i>
+                            <div>
+                                <strong>历史记录</strong>
+                                <small class="d-block text-muted">保存所有练习记录</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// 移动端表单优化
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('settings-form');
+    const submitBtn = form.querySelector('button[type="submit"]');
+    
+    // 添加提交动画
+    form.addEventListener('submit', function() {
+        submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>开始练习...';
+        submitBtn.disabled = true;
+    });
+    
+    // 选择变化时的视觉反馈
+    const selects = form.querySelectorAll('select');
+    selects.forEach(select => {
+        select.addEventListener('change', function() {
+            this.classList.add('border-primary');
+            setTimeout(() => {
+                this.classList.remove('border-primary');
+            }, 1000);
+        });
+    });
+});
+</script>
 {% endblock %}
