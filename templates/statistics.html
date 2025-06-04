@@ -1,0 +1,170 @@
+{% extends "base.html" %}
+
+{% block title %}统计信息 - 口算练习网站{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <h3>个人统计</h3>
+        
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <h4 class="text-primary">{{ stats.total_score }}</h4>
+                        <p class="mb-0">总分数</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <h4 class="text-success">{{ stats.total_quizzes }}</h4>
+                        <p class="mb-0">练习次数</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <h4 class="text-info">{{ stats.overall_accuracy }}%</h4>
+                        <p class="mb-0">总体正确率</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <h4 class="text-warning">{{ stats.total_time }}s</h4>
+                        <p class="mb-0">总练习时间</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">按难度统计</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>难度</th>
+                                        <th>练习次数</th>
+                                        <th>正确率</th>
+                                        <th>平均分</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for difficulty, data in stats.by_difficulty.items() %}
+                                    <tr>
+                                        <td>
+                                            {% if difficulty == 'easy' %}
+                                                <span class="badge bg-success">简单</span>
+                                            {% elif difficulty == 'medium' %}
+                                                <span class="badge bg-warning">中等</span>
+                                            {% else %}
+                                                <span class="badge bg-danger">困难</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ data.count }}</td>
+                                        <td>{{ data.accuracy }}%</td>
+                                        <td>{{ data.avg_score }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">按运算类型统计</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>运算类型</th>
+                                        <th>练习次数</th>
+                                        <th>正确率</th>
+                                        <th>平均分</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for operation, data in stats.by_operation.items() %}
+                                    <tr>
+                                        <td>
+                                            {% if operation == 'add' %}加法
+                                            {% elif operation == 'subtract' %}减法
+                                            {% elif operation == 'multiply' %}乘法
+                                            {% elif operation == 'divide' %}除法
+                                            {% else %}混合运算
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ data.count }}</td>
+                                        <td>{{ data.accuracy }}%</td>
+                                        <td>{{ data.avg_score }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="row mt-4">
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">最近练习趋势</h5>
+                    </div>
+                    <div class="card-body">
+                        {% if stats.recent_records %}
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>日期</th>
+                                        <th>练习次数</th>
+                                        <th>平均正确率</th>
+                                        <th>总分数</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for date, data in stats.recent_records.items() %}
+                                    <tr>
+                                        <td>{{ date }}</td>
+                                        <td>{{ data.count }}</td>
+                                        <td>{{ data.accuracy }}%</td>
+                                        <td>{{ data.total_score }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% else %}
+                        <p class="text-muted">暂无练习记录</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="text-center mt-4">
+            <a href="{{ url_for('quiz_settings') }}" class="btn btn-primary">继续练习</a>
+            <a href="{{ url_for('history') }}" class="btn btn-outline-primary">查看历史</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

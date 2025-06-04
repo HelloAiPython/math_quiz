@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+
+{% block title %}练习结果 - 口算练习网站{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-10">
+        <div class="card">
+            <div class="card-header text-center">
+                <h3 class="mb-0">练习完成！</h3>
+            </div>
+            <div class="card-body">
+                <div class="row text-center mb-4">
+                    <div class="col-md-3">
+                        <div class="card bg-primary text-white">
+                            <div class="card-body">
+                                <h4>{{ quiz_record.score }}</h4>
+                                <p class="mb-0">总分数</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card bg-success text-white">
+                            <div class="card-body">
+                                <h4>{{ quiz_record.correct_answers }}/{{ quiz_record.total_questions }}</h4>
+                                <p class="mb-0">正确题数</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card bg-info text-white">
+                            <div class="card-body">
+                                <h4>{{ quiz_record.get_accuracy_rate() }}%</h4>
+                                <p class="mb-0">正确率</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card bg-warning text-white">
+                            <div class="card-body">
+                                <h4>{{ quiz_record.time_spent }}s</h4>
+                                <p class="mb-0">总用时</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <h5>题目详情</h5>
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>题目</th>
+                                <th>正确答案</th>
+                                <th>您的答案</th>
+                                <th>结果</th>
+                                <th>用时</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for question in quiz_record.questions %}
+                            <tr class="{{ 'table-success' if question.is_correct else 'table-danger' }}">
+                                <td>{{ question.question_text }}</td>
+                                <td>{{ question.correct_answer }}</td>
+                                <td>{{ question.user_answer if question.user_answer is not none else '未答' }}</td>
+                                <td>
+                                    {% if question.is_correct %}
+                                        <span class="badge bg-success">正确</span>
+                                    {% else %}
+                                        <span class="badge bg-danger">错误</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ question.time_spent }}s</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div class="text-center mt-4">
+                    <a href="{{ url_for('quiz_settings') }}" class="btn btn-primary btn-lg me-2">再来一次</a>
+                    <a href="{{ url_for('history') }}" class="btn btn-outline-primary btn-lg me-2">查看历史</a>
+                    <a href="{{ url_for('index') }}" class="btn btn-outline-secondary btn-lg">返回首页</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

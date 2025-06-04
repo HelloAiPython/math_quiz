@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+
+{% block title %}练习设置 - 口算练习网站{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h4 class="mb-0">练习设置</h4>
+            </div>
+            <div class="card-body">
+                <form method="POST">
+                    {{ form.hidden_tag() }}
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                {{ form.difficulty.label(class="form-label") }}
+                                {{ form.difficulty(class="form-select") }}
+                                <div class="form-text">
+                                    <small>
+                                        <strong>简单:</strong> 1-20的数字<br>
+                                        <strong>中等:</strong> 1-100的数字<br>
+                                        <strong>困难:</strong> 1-1000的数字
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                {{ form.operation_type.label(class="form-label") }}
+                                {{ form.operation_type(class="form-select") }}
+                                <div class="form-text">
+                                    <small>选择您想要练习的运算类型</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                {{ form.question_count.label(class="form-label") }}
+                                {{ form.question_count(class="form-select") }}
+                                <div class="form-text">
+                                    <small>选择本次练习的题目数量</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="d-grid">
+                        {{ form.submit(class="btn btn-primary btn-lg") }}
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 class="mb-0">练习说明</h5>
+            </div>
+            <div class="card-body">
+                <ul class="list-unstyled">
+                    <li><i class="text-primary">•</i> 每道题都有时间记录，挑战您的计算速度</li>
+                    <li><i class="text-primary">•</i> 答对题目可以获得分数，答错不扣分</li>
+                    <li><i class="text-primary">•</i> 练习结束后会显示详细的统计信息</li>
+                    <li><i class="text-primary">•</i> 所有练习记录都会保存到您的历史中</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

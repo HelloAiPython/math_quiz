@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+
+{% block title %}练习中 - 口算练习网站{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h4 class="mb-0">第 {{ current_question + 1 }} 题 / 共 {{ total_questions }} 题</h4>
+                <div class="d-flex align-items-center">
+                    <span class="badge bg-info me-2">本题用时: <span id="question-timer">0</span>s</span>
+                    <span class="badge bg-secondary">总用时: <span id="total-timer">{{ total_time }}</span>s</span>
+                </div>
+            </div>
+            <div class="card-body text-center">
+                <div class="progress mb-4">
+                    <div class="progress-bar" role="progressbar" 
+                         style="width: {{ ((current_question + 1) / total_questions * 100) }}%">
+                    </div>
+                </div>
+                
+                <h1 class="display-3 mb-4">{{ question_text }}</h1>
+                
+                <form method="POST" id="answer-form">
+                    {{ form.hidden_tag() }}
+                    <div class="mb-3">
+                        {{ form.answer(class="form-control form-control-lg text-center", style="font-size: 2rem;", placeholder="请输入答案", autofocus=true) }}
+                    </div>
+                    <div class="d-grid">
+                        {{ form.submit(class="btn btn-success btn-lg") }}
+                    </div>
+                </form>
+                
+                <div class="mt-4">
+                    <small class="text-muted">按 Enter 键快速提交答案</small>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card mt-3">
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-md-4">
+                        <h6>已答题目</h6>
+                        <span class="badge bg-primary">{{ current_question }}</span>
+                    </div>
+                    <div class="col-md-4">
+                        <h6>正确答案</h6>
+                        <span class="badge bg-success">{{ correct_count }}</span>
+                    </div>
+                    <div class="col-md-4">
+                        <h6>错误答案</h6>
+                        <span class="badge bg-danger">{{ current_question - correct_count }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let questionStartTime = Date.now();
+let totalStartTime = {{ total_time * 1000 }};
+let totalTimer = {{ total_time }};
+
+function updateTimers() {
+    // 更新本题计时器
+    const questionTime = Math.floor((Date.now() - questionStartTime) / 1000);
+    document.getElementById('question-timer').textContent = questionTime;
+    
+    // 更新总计时器
+    totalTimer++;
+    document.getElementById('total-timer').textContent = totalTimer;
+}
+
+// 每秒更新计时器
+setInterval(updateTimers, 1000);
+
+// 按Enter键提交表单
+document.getElementById('answer-form').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        this.submit();
+    }
+});
+
+// 自动聚焦到答案输入框
+document.getElementById('{{ form.answer.id }}').focus();
+</script>
+{% endblock %}

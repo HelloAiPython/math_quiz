@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+
+{% block title %}首页 - 口算练习网站{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8 mx-auto">
+        <div class="jumbotron bg-light p-5 rounded">
+            <h1 class="display-4">欢迎来到口算练习网站</h1>
+            <p class="lead">提高您的数学计算能力，通过有趣的口算练习挑战自己！</p>
+            {% if not current_user.is_authenticated %}
+            <hr class="my-4">
+            <p>请先注册或登录以开始您的口算练习之旅。</p>
+            <a class="btn btn-primary btn-lg" href="{{ url_for('register') }}" role="button">立即注册</a>
+            <a class="btn btn-outline-primary btn-lg" href="{{ url_for('login') }}" role="button">登录</a>
+            {% else %}
+            <hr class="my-4">
+            <p>准备好开始练习了吗？选择您的难度和运算类型！</p>
+            <a class="btn btn-success btn-lg" href="{{ url_for('quiz_settings') }}" role="button">开始练习</a>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+{% if current_user.is_authenticated %}
+<div class="row mt-5">
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-body text-center">
+                <h5 class="card-title">总分数</h5>
+                <h2 class="text-primary">{{ current_user.get_total_score() }}</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-body text-center">
+                <h5 class="card-title">练习次数</h5>
+                <h2 class="text-success">{{ current_user.quiz_records|length }}</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-body text-center">
+                <h5 class="card-title">正确率</h5>
+                <h2 class="text-info">{{ current_user.get_accuracy_rate() }}%</h2>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<div class="row mt-5">
+    <div class="col-md-12">
+        <h3>功能特色</h3>
+        <div class="row">
+            <div class="col-md-3">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <h5 class="card-title">多种难度</h5>
+                        <p class="card-text">从简单到困难，适合不同水平的用户练习。</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <h5 class="card-title">多种运算</h5>
+                        <p class="card-text">支持加减乘除和混合运算练习。</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <h5 class="card-title">详细统计</h5>
+                        <p class="card-text">记录您的练习历史和进步情况。</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <h5 class="card-title">实时计时</h5>
+                        <p class="card-text">挑战您的计算速度和准确性。</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
