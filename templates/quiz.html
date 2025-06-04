@@ -37,9 +37,9 @@
                 <!-- 题目和答题区域 -->
                 <div class="card-body text-center">
                     <div class="quiz-question-container">
-                        <h1 class="quiz-question mb-4">{{ question_text }}</h1>
+                        <h1 class="quiz-question mb-4">{{ question[0] }}</h1>
                         
-                        <form method="POST" id="answer-form" onsubmit="return submitAnswer()">
+                        <form method="POST" action="{{ url_for('submit_answer') }}" id="answer-form">
                             {{ form.hidden_tag() }}
                             <div class="mb-4">
                                 {{ form.answer(class="form-control quiz-answer-input text-center", 
@@ -137,7 +137,7 @@ currentTimerInterval = setInterval(updateTimers, 1000);
 function submitAnswer() {
     if (isSubmitting) return false;
     
-    const answerInput = document.getElementById('answer');
+    const answerInput = document.querySelector('input[name="answer"]');
     const answer = answerInput.value.trim();
     
     if (answer === '') {
@@ -167,18 +167,32 @@ function submitAnswer() {
     return true;
 }
 
-// 按Enter键提交表单
-document.getElementById('answer-form').addEventListener('keypress', function(e) {
-    if (e.key === 'Enter') {
+// 表单提交时的处理
+document.getElementById('answer-form').addEventListener('submit', function(e) {
+    const answerInput = document.querySelector('input[name="answer"]');
+    const answer = answerInput.value.trim();
+    
+    if (answer === '') {
         e.preventDefault();
-        submitAnswer();
+        answerInput.focus();
+        // 添加视觉反馈
+        answerInput.classList.add('is-invalid');
+        setTimeout(() => {
+            answerInput.classList.remove('is-invalid');
+        }, 1000);
+        return false;
     }
-});
-
-// 按钮点击提交
-document.querySelector('.quiz-submit-btn').addEventListener('click', function(e) {
-    e.preventDefault();
-    submitAnswer();
+    
+    // 如果有答案，停止计时器并显示提交状态
+    clearInterval(currentTimerInterval);
+    
+    // 添加提交动画
+    const submitBtn = document.querySelector('.quiz-submit-btn');
+    submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>提交中...';
+    submitBtn.disabled = true;
+    
+    // 让表单正常提交
+    return true;
 });
 
 // 输入框变化时移除错误状态

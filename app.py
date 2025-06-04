@@ -99,15 +99,16 @@ def create_app(config_name='default'):
         form = QuizSettingsForm()
         if form.validate_on_submit():
             # 验证设置
-            if not validate_quiz_settings(form.operation.data, form.difficulty.data, form.question_count.data):
+            question_count = int(form.question_count.data)
+            if not validate_quiz_settings(form.difficulty.data, form.operation_type.data, question_count):
                 flash('练习设置无效，请检查输入。', 'error')
                 return render_template('quiz_settings.html', form=form)
             
             # 保存设置到session
             session['quiz_settings'] = {
-                'operation': form.operation.data,
+                'operation': form.operation_type.data,
                 'difficulty': form.difficulty.data,
-                'question_count': form.question_count.data
+                'question_count': question_count
             }
             return redirect(url_for('quiz'))
         
@@ -134,7 +135,7 @@ def create_app(config_name='default'):
             
             # 生成题目
             for _ in range(settings['question_count']):
-                question = generate_question(settings['operation'], settings['difficulty'])
+                question = generate_question(settings['difficulty'], settings['operation'])
                 session['current_quiz']['questions'].append(question)
         
         current_quiz = session['current_quiz']
@@ -147,10 +148,21 @@ def create_app(config_name='default'):
         current_question = current_quiz['questions'][current_q_index]
         form = AnswerForm()
         
+        # 计算正确答案数量
+        correct_count = 0
+        for i, answer in enumerate(current_quiz['answers']):
+            if i < len(current_quiz['questions']) and answer == current_quiz['questions'][i][1]:
+                correct_count += 1
+        
+        # 计算已用时间
+        total_time = int(time.time() - current_quiz['start_time'])
+        
         return render_template('quiz.html', 
                              question=current_question,
-                             question_number=current_q_index + 1,
+                             current_question=current_q_index,
                              total_questions=len(current_quiz['questions']),
+                             correct_count=correct_count,
+                             total_time=total_time,
                              form=form)
 
     @app.route('/submit_answer', methods=['POST'])
