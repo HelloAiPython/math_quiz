@@ -150,9 +150,12 @@ def create_app(config_name='default'):
         
         # 计算正确答案数量
         correct_count = 0
-        for i, answer in enumerate(current_quiz['answers']):
-            if i < len(current_quiz['questions']) and answer == current_quiz['questions'][i][1]:
-                correct_count += 1
+        for i, answer_data in enumerate(current_quiz['answers']):
+            if i < len(current_quiz['questions']):
+                user_answer = answer_data['answer']
+                correct_answer = current_quiz['questions'][i][1]  # 元组的第二个元素是正确答案
+                if user_answer == correct_answer:
+                    correct_count += 1
         
         # 计算已用时间
         total_time = int(time.time() - current_quiz['start_time'])
@@ -208,14 +211,15 @@ def create_app(config_name='default'):
         results = []
         for i, (question, answer_data) in enumerate(zip(questions, answers)):
             user_answer = answer_data['answer']
-            correct_answer = question['answer']
+            # question是一个元组 (question_text, correct_answer)
+            question_text, correct_answer = question
             is_correct = user_answer == correct_answer
             
             if is_correct:
                 correct_count += 1
             
             results.append({
-                'question': question,
+                'question_text': question_text,
                 'user_answer': user_answer,
                 'correct_answer': correct_answer,
                 'is_correct': is_correct
@@ -232,6 +236,23 @@ def create_app(config_name='default'):
             score=round((correct_count / len(questions)) * 100, 2)
         )
         db.session.add(quiz_record)
+        db.session.flush()  # 获取quiz_record的id
+        
+        # 保存每道题的详细信息
+        for i, result in enumerate(results):
+            # 计算每题用时（简化版本）
+            time_spent = int(total_time / len(questions)) if len(questions) > 0 else 0
+            
+            question_record = Question(
+                quiz_record_id=quiz_record.id,
+                question_text=result['question_text'],
+                correct_answer=result['correct_answer'],
+                user_answer=result['user_answer'],
+                is_correct=result['is_correct'],
+                time_spent=time_spent
+            )
+            db.session.add(question_record)
+        
         db.session.commit()
         
         # 清除会话数据
@@ -239,11 +260,8 @@ def create_app(config_name='default'):
         session.pop('quiz_settings', None)
         
         return render_template('quiz_result.html',
-                             results=results,
-                             correct_count=correct_count,
-                             total_questions=len(questions),
-                             total_time=format_time(total_time),
-                             score=quiz_record.score)
+                             quiz_record=quiz_record,
+                             results=results)
 
     @app.route('/history')
     @login_required

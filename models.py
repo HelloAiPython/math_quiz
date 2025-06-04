@@ -39,11 +39,11 @@ class QuizRecord(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     difficulty = db.Column(db.String(20), nullable=False)  # easy, medium, hard
-    operation_type = db.Column(db.String(20), nullable=False)  # add, subtract, multiply, divide, mixed
+    operation = db.Column(db.String(20), nullable=False)  # add, subtract, multiply, divide, mixed
     total_questions = db.Column(db.Integer, nullable=False)
     correct_answers = db.Column(db.Integer, nullable=False)
-    score = db.Column(db.Integer, nullable=False)
-    time_spent = db.Column(db.Integer, nullable=False)  # 秒数
+    score = db.Column(db.Float, nullable=False)
+    total_time = db.Column(db.Integer, nullable=False)  # 秒数
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
     def get_accuracy_rate(self):
